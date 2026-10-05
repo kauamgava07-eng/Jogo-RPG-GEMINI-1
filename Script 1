@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Undertale Mobile - Versão Final</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            background-color: #000;
+            border: 4px solid #fff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+        }
+        /* Tela de Batalha */
+        #monster-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        #monster-sprite {
+            font-size: 50px;
+            animation: float 2s infinite ease-in-out;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .monster-name {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .hp-bar-container {
+            width: 150px;
+            height: 12px;
+            border: 2px solid #fff;
+            background: #000;
+            position: relative;
+            display: flex;
+        }
+        .hp-bar-fill {
+            height: 100%;
+            background-color: #00ff00;
+            width: 100%;
+            transition: width 0.3s;
+        }
+        
+        /* Caixa de Diálogo / Batalha */
+        #battle-box {
+            width: 100%;
+            height: 130px;
+            border: 4px solid #fff;
+            background: #000;
+            position: relative;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        #dialogue-text {
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        /* Menus de Escolha */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+            height: 100%;
+        }
+        .menu-btn {
+            background: #000;
+            border: none;
+            color: #ff0;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            text-align: left;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .menu-btn.active, .menu-btn:hover {
+            color: #ff00ff;
+        }
+        .menu-btn::before {
+            content: "♥ ";
+            color: transparent;
+            margin-right: 5px;
+        }
+        .menu-btn.active::before, .menu-btn:hover::before {
+            color: #ff0000;
+        }
+
+        /* Área de Esquiva (Bullet Hell) */
+        #dodge-area {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            right: 50px;
+            bottom: 30px;
+            border: 3px solid #ffff00;
+            background: #000;
+            display: none;
+            overflow: hidden;
+        }
+        #soul {
+            width: 16px;
+            height: 16px;
+            background-color: #ff0000;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 50% 75%, 18% 100%, 0% 35%);
+            cursor: pointer;
+        }
+        .bullet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #fff;
+            border-radius: 50%;
+        }
+
+        /* Minigame de Ataque */
+        #attack-bar-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #000;
+            border: 2px solid #fff;
+        }
+        #attack-line {
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 0%;
+            width: 4px;
+            background-color: #ff0000;
+        }
+        #attack-target {
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 45%;
+            width: 10%;
+            background-color: rgba(0, 255, 0, 0.3);
+            border-left: 2px dashed #0f0;
+            border-right: 2px dashed #0f0;
+        }
+
+        /* HUD do Jogador */
+        #player-hud {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 5px 10px;
+        }
+
+        /* Controles Mobile na Tela */
+        #mobile-controls {
+            width: 100%;
+            max-width: 600px;
+            height: 200px;
+            background: #111;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border-top: 2px solid #333;
+        }
+        .dpad {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+        .dpad-btn {
+            position: absolute;
+            background: #333;
+            border: 2px solid #666;
+            color: #fff;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+        .dpad-btn:active { background: #555; }
+        #dp-up { top: 0; left: 40px; width: 40px; height: 40px; }
+        #dp-down { bottom: 0; left: 40px; width: 40px; height: 40px; }
+        #dp-left { top: 40px; left: 0; width: 40px; height: 40px; }
+        #dp-right { top: 40px; right: 0; width: 40px; height: 40px; }
+
+        .action-pad {
+            display: flex;
+            gap: 15px;
+        }
+        .action-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            background: #222;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 0 #444;
+        }
+        .action-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #444;
+        }
+        #btn-z { background-color: #800; border-color: #f55; }
+        #btn-x { background-color: #008; border-color: #55f; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Área do Monstro -->
+        <div id="monster-area">
+            <div class="monster-name" id="m-name">Glibb, o Gelatinoso</div>
+            <div class="hp-bar-container"><div class="hp-bar-fill" id="m-hp-fill"></div></div>
+            <div id="monster-sprite">🟢</div>
+        </div>
+
+        <!-- Caixa de Batalha Principal -->
+        <div id="battle-box">
+            <p id="dialogue-text">* Glibb balança alegremente bloqueando o caminho.</p>
+            
+            <div id="menu-options" class="menu-grid" style="display: none;">
+                <button class="menu-btn active" onclick="selectMenu(0)">[F] Lutar</button>
+                <button class="menu-btn" onclick="selectMenu(1)">[A] Agir</button>
+                <button class="menu-btn" onclick="selectMenu(2)">[I] Item</button>
+                <button class="menu-btn" onclick="selectMenu(3)">[M] Misericórdia</button>
+            </div>
+
+            <div id="sub-menu-options" class="menu-grid" style="display: none;">
+                <button class="menu-btn active" onclick="selectSubMenu(0)">* Glibb</button>
+                <button class="menu-btn" onclick="selectSubMenu(1)">* Voltar</button>
+            </div>
+
+            <div id="item-menu-options" class="menu-grid" style="display: none;">
+                <button class="menu-btn active" onclick="useItem()">* Torta de Canela (+20HP)</button>
+                <button class="menu-btn" onclick="cancelSubMenu()">* Voltar</button>
+            </div>
+
+            <!-- Minigame de Ataque -->
+            <div id="attack-bar-container">
+                <div id="attack-target"></div>
+                <div id="attack-line"></div>
+            </div>
+
+            <!-- Caixa de Esquiva -->
+            <div id="dodge-area">
+                <div id="soul"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD do Jogador -->
+    <div id="player-hud">
+        <span>LV 1</span>
+        <span>HP <span id="p-hp">20</span>/20</span>
+    </div>
+
+    <!-- Controles Mobile -->
+    <div id="mobile-controls">
+        <div class="dpad">
+            <div class="dpad-btn" id="dp-up">▲</div>
+            <div class="dpad-btn" id="dp-down">▼</div>
+            <div class="dpad-btn" id="dp-left">◄</div>
+            <div class="dpad-btn" id="dp-right">►</div>
+        </div>
+        <div class="action-pad">
+            <button class="action-btn" id="btn-z" onclick="handleZ()">Z</button>
+            <button class="action-btn" id="btn-x" onclick="handleX()">X</button>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis de Estado
+        let gameState = "DIALOGUE"; // DIALOGUE, MENU, SUBMENU, ITEM, ATTACK, DODGE, END
+        let currentMenuIdx = 0;
+        let currentSubMenuIdx = 0;
+        let playerHP = 20;
+        let monsterHP = 100;
+        let monsterMaxHP = 100;
+        
+        // Posição da Alma
+        let soulX = 150;
+        let soulY = 50;
+        let keys = { up: false, down: false, left: false, right: false };
+        let dodgeInterval = null;
+        let bulletTimer = null;
+        let bullets = [];
+
+        // Controle da barra de ataque
+        let attackPos = 0;
+        let attackDir = 2;
+        let attackInterval = null;
+
+        // Áudio Web Audio API simples para bleeps
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(freq, duration, type='sine') {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Elementos DOM
+        const dialogueText = document.getElementById("dialogue-text");
+        const menuOptions = document.getElementById("menu-options");
+        const subMenuOptions = document.getElementById("sub-menu-options");
+        const itemMenuOptions = document.getElementById("item-menu-options");
+        const attackBarContainer = document.getElementById("attack-bar-container");
+        const attackLine = document.getElementById("attack-line");
+        const dodgeArea = document.getElementById("dodge-area");
+        const soul = document.getElementById("soul");
+        const mHpFill = document.getElementById("m-hp-fill");
+        const pHpSpan = document.getElementById("p-hp");
+
+        // Inicialização
+        function initGame() {
+            updateHUD();
+            dialogueText.innerHTML = "* Glibb balança alegremente bloqueando o caminho.";
+        }
+
+        function updateHUD() {
+            pHpSpan.innerText = playerHP;
+            mHpFill.style.width = Math.max(0, (monsterHP / monsterMaxHP) * 100) + "%";
+        }
+
+        // Teclado virtual / Toques Z e X
+        function handleZ() {
+            playSound(400, 0.05);
+            if (gameState === "DIALOGUE") {
+                openMainMenus();
+            } else if (gameState === "MENU") {
+                selectAction(currentMenuIdx);
+            } else if (gameState === "SUBMENU") {
+                executeAction(currentSubMenuIdx);
+            } else if (gameState === "ITEM") {
+                useItem();
+            } else if (gameState === "ATTACK") {
+                stopAttack();
+            }
+        }
+
+        function handleX() {
+            playSound(200, 0.05);
+            if (gameState === "SUBMENU" || gameState === "ITEM") {
+                cancelSubMenu();
+            }
+        }
+
+        function openMainMenus() {
+            gameState = "MENU";
+            dialogueText.style.display = "none";
+            menuOptions.style.display = "grid";
+            highlightMenu();
+        }
+
+        function highlightMenu() {
+            let btns = menuOptions.getElementsByClassName("menu-btn");
+            for (let i = 0; i < btns.length; i++) {
+                btns[i].classList.toggle("active", i === currentMenuIdx);
+            }
+        }
+
+        function selectMenu(idx) {
+            currentMenuIdx = idx;
+            highlightMenu();
+            handleZ();
+        }
+
+        function selectAction(idx) {
+            menuOptions.style.display = "none";
+            if (idx === 0) { // FIGHT
+                gameState = "ATTACK";
+                attackBarContainer.style.display = "block";
+                attackPos = 0;
+                attackLine.style.left = "0%";
+                attackInterval = setInterval(updateAttackBar, 20);
+            } else if (idx === 1) { // ACT
+                gameState = "SUBMENU";
+                subMenuOptions.style.display = "grid";
+            } else if (idx === 2) { // ITEM
+                gameState = "ITEM";
+                itemMenuOptions.style.display = "grid";
+            } else if (idx === 3) { // MERCY
+                if (monsterHP <= 40 || window.glibbSpared) {
+                    endBattleWin();
+                } else {
+                    dialogueText.style.display = "block";
+                    dialogueText.innerHTML = "* Você tentou poupar Glibb, mas ele ainda quer brincar!";
+                    setTimeout(startMonsterTurn, 2000);
+                }
+            }
+        }
+
+        // Ataque Minigame
+        function updateAttackBar() {
+            attackPos += attackDir;
+            if (attackPos >= 98 || attackPos <= 0) attackDir *= -1;
+            attackLine.style.left = attackPos + "%";
+        }
+
+        function stopAttack() {
+            clearInterval(attackInterval);
+            attackBarContainer.style.display = "none";
+            
+            // Calcula dano baseado se caiu no alvo verde (45% a 55%)
+            let damage = 0;
+            if (attackPos >= 45 && attackPos <= 55) {
+                damage = 45;
+                playSound(600, 0.2, 'square');
+            } else if (attackPos >= 30 && attackPos <= 70) {
+                damage = 20;
+                playSound(450, 0.15);
+            } else {
+                damage = 5;
+                playSound(150, 0.1);
+            }
+
+            monsterHP -= damage;
+            updateHUD();
+
+            dialogueText.style.display = "block";
+            dialogueText.innerHTML = `* Você desferiu um golpe causando ${damage} de dano!`;
+
+            if (monsterHP <= 0) {
+                setTimeout(endBattleWin, 2000);
+            } else {
+                setTimeout(startMonsterTurn, 2000);
+            }
+        }
+
+        // Ações ACT
+        function selectSubMenu(idx) {
+            subMenuOptions.style.display = "none";
+            dialogueText.style.display = "block";
+            if (idx === 0) {
+                window.glibbSpared = true;
+                dialogueText.innerHTML = "* Você contou uma piada terrível.<br>* Glibb riu tanto que perdeu as forças de lutar!";
+            } else {
+                cancelSubMenu();
+                return;
+            }
+            setTimeout(startMonsterTurn, 2500);
+        }
+
+        function cancelSubMenu() {
+            subMenuOptions.style.display = "none";
+            itemMenuOptions.style.display = "none";
+            openMainMenus();
+        }
+
+        // Itens
+        function useItem() {
+            itemMenuOptions.style.display = "none";
+            dialogueText.style.display = "block";
+            playerHP = Math.min(20, playerHP + 20);
+            updateHUD();
+            playSound(800, 0.3);
+            dialogueText.innerHTML = "* Você comeu a Torta de Canela.<br>* Recuperou 20 de HP!";
+            setTimeout(startMonsterTurn, 2000);
+        }
+
+        // Turno do Monstro (Esquiva / Bullet Hell)
+        function startMonsterTurn() {
+            gameState = "DODGE";
+            dialogueText.style.display = "none";
+            dodgeArea.style.display = "block";
+            
+            // Centraliza alma
+            soulX = dodgeArea.clientWidth / 2;
+            soulY = dodgeArea.clientHeight / 2;
+            updateSoulPos();
+
+            bullets = [];
+            // Cria projéteis
+            bulletTimer = setInterval(() => {
+                let b = document.createElement("div");
+                b.className = "bullet";
+                let bx = dodgeArea.clientWidth;
+                let by = Math.random() * (dodgeArea.clientHeight - 10);
+                b.style.left = bx + "px";
+                b.style.top = by + "px";
+                dodgeArea.appendChild(b);
+                bullets.push({ el: b, x: bx, y: by, speed: 3 + Math.random() * 2 });
+            }, 600);
+
+            // Loop de movimento e colisão
+            dodgeInterval = setInterval(() => {
+                // Movimento direcional D-pad
+                let speed = 3.5;
+                if (keys.up) soulY -= speed;
+                if (keys.down) soulY += speed;
+                if (keys.left) soulX -= speed;
+                if (keys.right) soulX += speed;
+
+                // Limites da caixa
+                soulX = Math.max(10, Math.min(dodgeArea.clientWidth - 10, soulX));
+                soulY = Math.max(10, Math.min(dodgeArea.clientHeight - 10, soulY));
+                updateSoulPos();
+
+                // Atualiza balas
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    let bul = bullets[i];
+                    bul.x -= bul.speed;
+                    bul.el.style.left = bul.x + "px";
+
+                    // Colisão simples com a alma
+                    let dx = bul.x - soulX;
+                    let dy = bul.y - soulY;
+                    if (Math.hypot(dx, dy) < 14) {
+                        playerHP -= 4;
+                        updateHUD();
+                        playSound(100, 0.1, 'sawtooth');
+                        bul.el.remove();
+                        bullets.splice(i, 1);
+                        if (playerHP <= 0) {
+                            endBattleLose();
+                        }
+                    } else if (bul.x < -10) {
+                        bul.el.remove();
+                        bullets.splice(i, 1);
+                    }
+                }
+            }, 20);
+
+            // Turno dura 4 segundos
+            setTimeout(() => {
+                endMonsterTurn();
+            }, 4000);
+        }
+
+        function updateSoulPos() {
+            soul.style.left = soulX + "px";
+            soul.style.top = soulY + "px";
+        }
+
+        function endMonsterTurn() {
+            clearInterval(dodgeInterval);
+            clearInterval(bulletTimer);
+            bullets.forEach(b => b.el.remove());
+            bullets = [];
+            dodgeArea.style.display = "none";
+            
+            // Retorna ao menu
+            dialogueText.style.display = "block";
+            dialogueText.innerHTML = "* Glibb aguarda o seu próximo comando.";
+            setTimeout(openMainMenus, 500);
+        }
+
+        // Finais da Batalha
+        function endBattleWin() {
+            gameState = "END";
+            clearInterval(dodgeInterval);
+            clearInterval(bulletTimer);
+            bullets.forEach(b => b.el.response?.remove());
+            dodgeArea.style.display = "none";
+            attackBarContainer.style.display = "none";
+            menuOptions.style.display = "none";
+            subMenuOptions.style.display = "none";
+            itemMenuOptions.style.display = "none";
+
+            dialogueText.style.display = "block";
+            dialogueText.innerHTML = "VITÓRIA!<br>* Você venceu a batalha pacificamente.<br>* PARABÉNS! FIM DA DEMONSTRAÇÃO.";
+            playSound(500, 0.5);
+            setTimeout(() => playSound(700, 0.5), 300);
+            setTimeout(() => playSound(900, 0.8), 600);
+        }
+
+        function endBattleLose() {
+            gameState = "END";
+            clearInterval(dodgeInterval);
+            clearInterval(bulletTimer);
+            dodgeArea.style.display = "none";
+            dialogueText.style.display = "block";
+            dialogueText.innerHTML = "FIM DE JOGO<br>* Sua determinação se esvaiu...";
+            playSound(80, 1.0, 'sawtooth');
+        }
+
+        // Configuração de Eventos do D-Pad Touch para Celular
+        function setupDpadButton(id, keyName) {
+            let el = document.getElementById(id);
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+            el.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            el.addEventListener('mousedown', () => { keys[keyName] = true; });
+            el.addEventListener('mouseup', () => { keys[keyName] = false; });
+        }
+
+        setupDpadButton('dp-up', 'up');
+        setupDpadButton('dp-down', 'down');
+        setupDpadButton('dp-left', 'left');
+        setupDpadButton('dp-right', 'right');
+
+        // Iniciar jogo ao carregar
+        window.onload = initGame;
+    </script>
+</body>
+</html>
